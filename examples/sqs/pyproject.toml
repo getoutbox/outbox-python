@@ -1,0 +1,29 @@
+[project]
+name = "outbox-examples-sqs"
+version = "0.0.0"
+requires-python = ">=3.11"
+dependencies = [
+    "outbox-sdk",
+    "anthropic>=0.84.0",
+    "boto3>=1.42.59",
+    "google-genai>=1.65.0",
+    "langchain-core>=1.2.16",
+    "langchain-openai>=1.1.10",
+    "openai>=2.24.0",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+outbox-sdk = { workspace = true }
+
+[dependency-groups]
+dev = ["poethepoet"]
+
+[tool.poe.tasks]
+"start:anthropic" = { cmd = "python anthropic.py", envfile = ".env" }
+"start:gemini" = { cmd = "python gemini.py", envfile = ".env" }
+"start:langchain" = { cmd = "python langchain.py", envfile = ".env" }
+"start:openai" = { cmd = "python openai.py", envfile = ".env" }
+"start:xai" = { cmd = "python xai.py", envfile = ".env" }

@@ -1,0 +1,25 @@
+version: v2
+managed:
+  enabled: true
+  disable:
+    - file_option: go_package_prefix
+      module: buf.build/googleapis/googleapis
+    - file_option: go_package_prefix
+      module: buf.build/bufbuild/protovalidate
+  override:
+    - file_option: go_package_prefix
+      value: github.com/getoutbox/outbox-internal/go/outbox-api/gen
+plugins:
+  - remote: buf.build/protocolbuffers/python:v34.0
+    out: packages/sdk/src
+    include_imports: true
+  - remote: buf.build/protocolbuffers/pyi:v34.0
+    out: packages/sdk/src
+    include_imports: true
+  - remote: buf.build/connectrpc/python:v0.8.1
+    out: packages/sdk/src
+    include_imports: true
+inputs:
+  - directory: ../../proto
+    paths:
+      - ../../proto/outbox/v1

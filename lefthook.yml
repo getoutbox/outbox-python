@@ -1,0 +1,7 @@
+pre-commit:
+  jobs:
+    - run: uv run ruff check --fix && uv run ruff format && uv run pyright
+      glob:
+        - "**/*.py"
+        - "**/*.toml"
+      stage_fixed: true
