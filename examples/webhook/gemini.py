@@ -1,0 +1,108 @@
+# Agent using Outbox webhook destination + Gemini
+
+import asyncio
+import logging
+import os
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
+from google import genai  # type: ignore[attr-defined]
+from google.genai import types  # type: ignore[attr-defined]
+from outbox_sdk import DestinationEventType, MessageDirection, MessagePart, OutboxClient, parse, verify
+
+logger = logging.getLogger(__name__)
+
+outbox = OutboxClient(api_key=os.environ["OUTBOX_API_KEY"])
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
+    # Register (or update) the destination — upsert semantics make this safe
+    # to call on every startup without creating duplicates.
+    await outbox.destinations.create(
+        destination_id="webhook-gemini",
+        display_name="Webhook Gemini agent",
+        target_type="webhook",
+        target_config={
+            "url": "https://your-server.example.com/inbound",
+            "signing_secret": os.environ["OUTBOX_SIGNING_SECRET"],
+        },
+        event_types=[DestinationEventType.MESSAGE],
+    )
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
+gemini = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
+
+
+@app.post("/inbound")
+async def inbound(request: Request, background_tasks: BackgroundTasks) -> dict[str, bool]:
+    raw_body = await request.body()
+    sig = request.headers.get("x-outbox-signature", "")
+    if not verify(
+        body=raw_body,
+        secret=os.environ["OUTBOX_SIGNING_SECRET"],
+        signature=sig,
+    ):
+        raise HTTPException(status_code=401)
+    payload = await request.json()
+    background_tasks.add_task(process_event, payload)
+    return {"ok": True}
+
+
+async def process_event(payload: dict) -> None:
+    try:
+        event = parse(payload)
+        if event.type != "message":
+            return
+
+        connector_id = event.connector_id
+        msg = event.message
+        if msg.account is None:
+            return
+        user_text = msg.parts[0].text_content
+        sender_id = msg.account.id
+
+        await outbox.messages.mark_read(
+            connector_id=connector_id,
+            account_id=sender_id,
+            messages=[msg.id],
+        )
+
+        result = await outbox.messages.history(
+            connector_id=connector_id,
+            account_id=sender_id,
+            page_size=20,
+        )
+        history = [
+            {
+                "role": "user" if m.direction == MessageDirection.INBOUND else "assistant",
+                "content": m.parts[0].text_content,
+            }
+            for m in result.items
+        ]
+
+        async with outbox.messages.typing_indicator(
+            connector_id=connector_id,
+            account_id=sender_id,
+        ):
+            gemini_history = [
+                types.Content(
+                    role="user" if m["role"] == "user" else "model",
+                    parts=[types.Part.from_text(text=m["content"])],
+                )
+                for m in history
+            ]
+            chat = gemini.chats.create(model="gemini-3.1-pro-preview", history=gemini_history)
+            response = await asyncio.to_thread(chat.send_message, user_text)
+            reply_text = response.text
+
+        await outbox.messages.send(
+            connector_id=connector_id,
+            account=sender_id,
+            parts=[MessagePart.text(reply_text)],
+        )
+    except Exception:
+        logger.exception("Failed to process message")

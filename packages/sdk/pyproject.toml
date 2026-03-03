@@ -1,0 +1,38 @@
+
+
+[project]
+name = "outbox-sdk"
+version = "0.0.0"
+description = "Python SDK for Outbox — a unified messaging API for AI agents"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+dependencies = ["connect-python~=0.8.1", "aiohttp~=3.13.3", "pydantic~=2.12.5", "protobuf>=7.34.0"]
+
+[project.urls]
+Homepage = "https://outbox.chat"
+Repository = "https://github.com/getoutbox/outbox-python"
+
+[build-system]
+requires = ["uv-build>=0.6"]
+build-backend = "uv_build"
+
+[tool.pyright]
+pythonVersion = "3.11"
+typeCheckingMode = "strict"
+exclude = [
+    "src/outbox",
+    "src/google",
+    "src/buf",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "strict"
+
+[dependency-groups]
+dev = [
+    "pyright~=1.1.408",
+    "pytest~=9.0.2",
+    "pytest-asyncio~=1.3.0",
+    "ruff~=0.15.4",
+]

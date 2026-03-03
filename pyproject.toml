@@ -1,0 +1,92 @@
+[project]
+name = "outbox-python"
+version = "0.0.0"
+requires-python = ">=3.11"
+
+[tool.uv.workspace]
+members = [
+    "packages/sdk",
+    "examples/eventbridge",
+    "examples/googlepubsub",
+    "examples/hatchet",
+    "examples/inngest",
+    "examples/kafka",
+    "examples/lambda",
+    "examples/nats",
+    "examples/restate",
+    "examples/sns",
+    "examples/sqs",
+    "examples/temporal",
+    "examples/webhook",
+]
+
+[tool.uv]
+package = false
+override-dependencies = ["protobuf>=7.34.0"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+exclude = [
+    "packages/sdk/src/outbox",
+    "packages/sdk/src/google",
+    "packages/sdk/src/buf",
+]
+force-exclude = true
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    # Incompatible with ruff format
+    "COM812",
+    "ISC001",
+    # Incompatible docstring style rules (keep D211 and D212)
+    "D203",
+    "D213",
+    # Docstrings not required
+    "D100",
+    "D101",
+    "D102",
+    "D103",
+    "D104",
+    "D105",
+    "D106",
+    "D107",
+    # Commented-out code is intentional (destination setup docs)
+    "ERA001",
+    # Example scripts are not Python packages
+    "INP001",
+    # Too many arguments is a valid API design choice
+    "PLR0913",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"packages/sdk/tests/**" = [
+    "S101",    # assert is expected in tests
+    "S105",    # hardcoded secrets are expected in tests
+    "S106",    # hardcoded secrets in args are expected in tests
+    "PLR2004", # magic values in test assertions are fine
+    "N806",    # MockClient-style names are a common test pattern
+    "ARG001",  # unused fixture args are common in pytest
+    "PLC0415", # imports inside functions are sometimes used in tests
+    "EM101",   # inline exception messages are fine in tests
+    "TRY003",  # long exception messages are fine in tests
+    "PT011",   # broad pytest.raises is acceptable in tests
+    "B017",    # catching broad exceptions is acceptable in tests
+]
+
+[tool.ruff.lint.flake8-type-checking]
+runtime-evaluated-base-classes = ["pydantic.BaseModel"]
+
+[tool.pyright]
+pythonVersion = "3.11"
+typeCheckingMode = "strict"
+venvPath = "."
+venv = ".venv"
+exclude = [
+    ".venv",
+    "examples",
+    "packages/sdk/src/outbox",
+    "packages/sdk/src/google",
+    "packages/sdk/src/buf",
+]
