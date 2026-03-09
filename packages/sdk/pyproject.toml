@@ -2,7 +2,7 @@
 
 [project]
 name = "outbox-sdk"
-version = "0.0.0"
+version = "0.1.0"
 description = "Python SDK for Outbox — a unified messaging API for AI agents"
 readme = "README.md"
 license = { text = "MIT" }
