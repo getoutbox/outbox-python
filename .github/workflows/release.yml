@@ -24,7 +24,7 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@5a095e7a2014a4212f075830d4f7277575a9d098 # v7
       - name: Build
-        run: uv build
+        run: uv build --package outbox-sdk
       - name: Upload artifact archive
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
