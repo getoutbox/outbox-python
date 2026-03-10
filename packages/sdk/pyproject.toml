@@ -7,11 +7,25 @@ description = "Python SDK for Outbox — a unified messaging API for AI agents"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11"
+keywords = ["outbox", "messaging", "sdk", "ai", "slack", "whatsapp"]
+authors = [{ name = "Outbox", email = "hello@outbox.chat" }]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Typing :: Typed",
+]
 dependencies = ["connect-python~=0.8.1", "aiohttp~=3.13.3", "pydantic~=2.12.5", "protobuf>=7.34.0"]
 
 [project.urls]
 Homepage = "https://outbox.chat"
 Repository = "https://github.com/getoutbox/outbox-python"
+Documentation = "https://github.com/getoutbox/outbox-python#readme"
+"Bug Tracker" = "https://github.com/getoutbox/outbox-python/issues"
 
 [build-system]
 requires = ["uv-build>=0.6"]
