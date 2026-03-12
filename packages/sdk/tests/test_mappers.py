@@ -1,9 +1,13 @@
 from datetime import UTC, datetime
 
+import pytest
 from google.protobuf.timestamp_pb2 import Timestamp
-from outbox.v1 import channel_pb2, connector_pb2, destination_pb2, message_pb2
+from outbox.v1 import connector_pb2, destination_pb2, message_pb2
+from outbox.v1 import template_pb2
 from outbox_sdk._enums import (
     AccountSource,
+    ConnectorKind,
+    ConnectorReadiness,
     ConnectorState,
     DestinationEventType,
     DestinationPayloadFormat,
@@ -11,10 +15,11 @@ from outbox_sdk._enums import (
     MessageDeliveryStatus,
     MessageDirection,
     MessagePartDisposition,
+    TemplateCategory,
+    TemplateStatus,
 )
 from outbox_sdk._mappers import (
     map_account,
-    map_channel,
     map_connector,
     map_delivery_event,
     map_destination,
@@ -22,6 +27,7 @@ from outbox_sdk._mappers import (
     map_message_delivery,
     map_message_part,
     map_read_receipt,
+    map_template,
     map_typing_indicator,
 )
 
@@ -36,45 +42,34 @@ def _ts(seconds: int) -> Timestamp:
 def test_map_connector_basic() -> None:
     proto = connector_pb2.Connector()
     proto.name = "connectors/abc"
-    proto.account.name = "accounts/contact-1"
-    proto.account.contact_id = "contact-1"
-    proto.account.external_id = "ext-1"
-    proto.whatsapp.app_id = "app123"
-    proto.whatsapp.waba_id = "waba456"
-    proto.state = connector_pb2.Connector.State.STATE_ACTIVE
+    proto.whatsapp_bot.app_id = "app123"
+    proto.whatsapp_bot.app_secret = "secret456"
+    proto.state = connector_pb2.ConnectorState.Value("CONNECTOR_STATE_ACTIVE")
+    proto.kind = connector_pb2.ConnectorKind.Value("CONNECTOR_KIND_BOT")
+    proto.readiness = connector_pb2.ConnectorReadiness.Value("CONNECTOR_READINESS_READY")
+    proto.display_name = "My WhatsApp Bot"
+    proto.webhook_url = "https://example.com/hook"
     proto.create_time.CopyFrom(_ts(1700000000))
 
     result = map_connector(proto)
 
     assert result.id == "abc"
-    assert result.account is not None
-    assert result.account.id == "contact-1"
     assert result.state == ConnectorState.ACTIVE
-    assert result.channel_config_type == "whatsapp"
-    # mapper includes all proto fields (is not None check), so verify specific set values
+    assert result.kind == ConnectorKind.BOT
+    assert result.readiness == ConnectorReadiness.READY
+    assert result.display_name == "My WhatsApp Bot"
+    assert result.webhook_url == "https://example.com/hook"
+    assert result.channel_config_type == "whatsapp_bot"
     assert result.channel_config is not None
     assert result.channel_config["app_id"] == "app123"
-    assert result.channel_config["waba_id"] == "waba456"
+    assert result.channel_config["app_secret"] == "secret456"
     assert result.create_time == datetime(2023, 11, 14, 22, 13, 20, tzinfo=UTC)
-
-
-def test_map_connector_no_account() -> None:
-    """Account is optional (OUTPUT_ONLY); connector can exist without it during AUTHORIZING."""
-    proto = connector_pb2.Connector()
-    proto.name = "connectors/abc"
-    proto.state = connector_pb2.Connector.State.STATE_AUTHORIZING
-
-    result = map_connector(proto)
-
-    assert result.id == "abc"
-    assert result.account is None
-    assert result.state == ConnectorState.AUTHORIZING
 
 
 def test_map_connector_error_message() -> None:
     proto = connector_pb2.Connector()
     proto.name = "connectors/abc"
-    proto.state = connector_pb2.Connector.State.STATE_ERROR
+    proto.state = connector_pb2.ConnectorState.Value("CONNECTOR_STATE_ERROR")
     proto.error_message = "token expired"
 
     result = map_connector(proto)
@@ -86,13 +81,26 @@ def test_map_connector_error_message() -> None:
 def test_map_connector_no_channel_config() -> None:
     proto = connector_pb2.Connector()
     proto.name = "connectors/xyz"
-    proto.account.name = "accounts/c"
-    proto.state = connector_pb2.Connector.State.STATE_INACTIVE
+    proto.state = connector_pb2.ConnectorState.Value("CONNECTOR_STATE_INACTIVE")
 
     result = map_connector(proto)
 
     assert result.channel_config_type is None
     assert result.channel_config is None
+
+
+def test_map_connector_provisioned_resources() -> None:
+    proto = connector_pb2.Connector()
+    proto.name = "connectors/abc"
+    proto.state = connector_pb2.ConnectorState.Value("CONNECTOR_STATE_ACTIVE")
+    proto.provisioned_resources.extend([
+        "provisioned_resources/res-1",
+        "provisioned_resources/res-2",
+    ])
+
+    result = map_connector(proto)
+
+    assert result.provisioned_resources == ["res-1", "res-2"]
 
 
 def test_map_message_part_content() -> None:
@@ -238,40 +246,6 @@ def test_map_account_no_timestamps() -> None:
     assert result.id == "acc-2"
     assert result.create_time is None
     assert result.update_time is None
-
-
-def test_map_channel_with_capabilities() -> None:
-    proto = channel_pb2.Channel()
-    proto.name = "channels/whatsapp"
-    proto.capabilities.groups = True
-    proto.capabilities.reactions = False
-    proto.capabilities.edits = True
-    proto.capabilities.deletions = True
-    proto.capabilities.read_receipts = True
-    proto.capabilities.typing_indicators = True
-    proto.capabilities.supported_content_types.extend(["text/plain", "image/jpeg"])
-    proto.create_time.CopyFrom(_ts(1700000000))
-
-    result = map_channel(proto)
-
-    assert result.id == "whatsapp"
-    assert result.capabilities is not None
-    assert result.capabilities.groups is True
-    assert result.capabilities.reactions is False
-    assert result.capabilities.edits is True
-    assert result.capabilities.supported_content_types == ["text/plain", "image/jpeg"]
-    assert result.create_time is not None
-
-
-def test_map_channel_no_capabilities() -> None:
-    proto = channel_pb2.Channel()
-    proto.name = "channels/telegram"
-
-    result = map_channel(proto)
-
-    assert result.id == "telegram"
-    assert result.capabilities is None
-    assert result.create_time is None
 
 
 def test_map_read_receipt_basic() -> None:
@@ -448,11 +422,8 @@ def test_proto_ts_nanos_only() -> None:
 def test_map_connector_with_tags() -> None:
     proto = connector_pb2.Connector()
     proto.name = "connectors/abc"
-    proto.account.name = "accounts/contact-1"
-    proto.account.contact_id = "contact-1"
-    proto.account.external_id = "ext-1"
     proto.tags.extend(["prod", "whatsapp", "critical"])
-    proto.state = connector_pb2.Connector.State.STATE_ACTIVE
+    proto.state = connector_pb2.ConnectorState.Value("CONNECTOR_STATE_ACTIVE")
 
     result = map_connector(proto)
 
@@ -462,10 +433,7 @@ def test_map_connector_with_tags() -> None:
 def test_map_connector_no_tags() -> None:
     proto = connector_pb2.Connector()
     proto.name = "connectors/abc"
-    proto.account.name = "accounts/contact-1"
-    proto.account.contact_id = "contact-1"
-    proto.account.external_id = "ext-1"
-    proto.state = connector_pb2.Connector.State.STATE_ACTIVE
+    proto.state = connector_pb2.ConnectorState.Value("CONNECTOR_STATE_ACTIVE")
 
     result = map_connector(proto)
 
@@ -476,16 +444,16 @@ def test_map_connector_channel_config_includes_all_fields() -> None:
     """channel_config mapper uses `if val is not None:` so all fields including empty strings are included."""
     proto = connector_pb2.Connector()
     proto.name = "connectors/abc"
-    proto.state = connector_pb2.Connector.State.STATE_ACTIVE
-    proto.whatsapp.app_id = ""  # empty string — now included (is not None)
-    proto.whatsapp.waba_id = "waba-123"
+    proto.state = connector_pb2.ConnectorState.Value("CONNECTOR_STATE_ACTIVE")
+    proto.whatsapp_bot.app_id = ""  # empty string — now included (is not None)
+    proto.whatsapp_bot.app_secret = "secret-123"
 
     result = map_connector(proto)
 
-    assert result.channel_config_type == "whatsapp"
+    assert result.channel_config_type == "whatsapp_bot"
     assert result.channel_config is not None
     assert result.channel_config["app_id"] == ""
-    assert result.channel_config["waba_id"] == "waba-123"
+    assert result.channel_config["app_secret"] == "secret-123"
 
 
 def test_map_destination_multiple_event_types() -> None:
@@ -742,23 +710,23 @@ def test_map_destination_google_pub_sub_target() -> None:
     assert result.target_config["topic_id"] == "my-topic"
 
 
-def test_map_connector_bool_false_config_preserved() -> None:
-    """A config field set to False must appear in channel_config (val is not None)."""
+def test_map_connector_empty_string_config_preserved() -> None:
+    """An empty string field must appear in channel_config (val is not None)."""
     from outbox.v1 import connector_pb2
 
     proto = connector_pb2.Connector()
     proto.name = "connectors/conn-1"
-    proto.state = connector_pb2.Connector.State.STATE_ACTIVE
-    # LarkConfig.user_oauth is a bool; even when False it should be included
-    proto.lark.app_id = "app-123"
-    proto.lark.app_secret = "secret-abc"
-    proto.lark.user_oauth = False  # explicitly set to False (same as proto default)
+    proto.state = connector_pb2.ConnectorState.Value("CONNECTOR_STATE_ACTIVE")
+    # slack_bot.bot_token is an empty string — it must still be included
+    proto.slack_bot.bot_token = ""  # empty string, same as proto default
+    proto.slack_bot.signing_secret = "sign-abc"
 
     result = map_connector(proto)
 
-    assert result.channel_config_type == "lark"
+    assert result.channel_config_type == "slack_bot"
     assert result.channel_config is not None
-    assert result.channel_config["user_oauth"] is False
+    assert result.channel_config["bot_token"] == ""
+    assert result.channel_config["signing_secret"] == "sign-abc"
 
 
 def test_map_destination_restate_target() -> None:
@@ -924,3 +892,82 @@ def test_map_destination_nats_target() -> None:
     assert result.target_config["username"] == "user123"
     assert result.target_config["password"] == "pass456"
     assert result.target_config["token"] == "nats-token"
+
+
+# --- Template mapper tests ---
+
+
+def test_map_template_basic() -> None:
+    proto = template_pb2.Template()
+    proto.name = "connectors/conn-1/templates/tmpl-abc"
+    proto.template_name = "order_confirmation"
+    proto.language = "en"
+    proto.category = 1  # UTILITY
+    proto.components_json = '[{"type":"BODY","text":"Hello"}]'
+    proto.status = 2  # APPROVED
+    proto.create_time.CopyFrom(_ts(1700000000))
+    proto.update_time.CopyFrom(_ts(1700000001))
+
+    result = map_template(proto)
+
+    assert result.id == "tmpl-abc"
+    assert result.connector_id == "conn-1"
+    assert result.template_name == "order_confirmation"
+    assert result.language == "en"
+    assert result.category == TemplateCategory.UTILITY
+    assert result.components_json == '[{"type":"BODY","text":"Hello"}]'
+    assert result.status == TemplateStatus.APPROVED
+    assert result.create_time is not None
+    assert result.update_time is not None
+
+
+def test_map_template_rejection() -> None:
+    proto = template_pb2.Template()
+    proto.name = "connectors/conn-1/templates/tmpl-rej"
+    proto.template_name = "promo"
+    proto.language = "es"
+    proto.category = 2  # MARKETING
+    proto.status = 3  # REJECTED
+    proto.rejection_reason = "content policy violation"
+    proto.external_id = "ext-12345"
+
+    result = map_template(proto)
+
+    assert result.id == "tmpl-rej"
+    assert result.connector_id == "conn-1"
+    assert result.category == TemplateCategory.MARKETING
+    assert result.status == TemplateStatus.REJECTED
+    assert result.rejection_reason == "content policy violation"
+    assert result.external_id == "ext-12345"
+    assert result.create_time is None
+    assert result.update_time is None
+
+
+def test_map_template_status_paused() -> None:
+    tmpl = template_pb2.Template()
+    tmpl.name = "connectors/c1/templates/t1"
+    tmpl.status = template_pb2.TemplateStatus.Value("TEMPLATE_STATUS_PAUSED")
+    result = map_template(tmpl)
+    assert result.status == TemplateStatus.PAUSED
+
+
+def test_map_template_status_disabled() -> None:
+    tmpl = template_pb2.Template()
+    tmpl.name = "connectors/c1/templates/t1"
+    tmpl.status = template_pb2.TemplateStatus.Value("TEMPLATE_STATUS_DISABLED")
+    result = map_template(tmpl)
+    assert result.status == TemplateStatus.DISABLED
+
+
+def test_map_template_malformed_name() -> None:
+    tmpl = template_pb2.Template()
+    tmpl.name = "bad-name"
+    with pytest.raises(ValueError, match="Invalid template resource name"):
+        map_template(tmpl)
+
+
+def test_map_template_wrong_prefix() -> None:
+    tmpl = template_pb2.Template()
+    tmpl.name = "foo/conn-1/bar/tmpl-1"
+    with pytest.raises(ValueError, match="Invalid template resource name"):
+        map_template(tmpl)

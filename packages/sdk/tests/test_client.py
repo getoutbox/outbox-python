@@ -14,10 +14,10 @@ async def test_context_manager_closes_all_namespaces() -> None:
 
     with (
         patch("outbox_sdk.AccountsNamespace", return_value=mock_ns),
-        patch("outbox_sdk.ChannelsNamespace", return_value=mock_ns),
         patch("outbox_sdk.ConnectorsNamespace", return_value=mock_ns),
         patch("outbox_sdk.DestinationsNamespace", return_value=mock_ns),
         patch("outbox_sdk.MessagesNamespace", return_value=mock_ns),
+        patch("outbox_sdk.TemplatesNamespace", return_value=mock_ns),
     ):
         async with OutboxClient(api_key="test-key"):
             pass
@@ -33,10 +33,10 @@ async def test_context_manager_returns_self() -> None:
 
     with (
         patch("outbox_sdk.AccountsNamespace", return_value=mock_ns),
-        patch("outbox_sdk.ChannelsNamespace", return_value=mock_ns),
         patch("outbox_sdk.ConnectorsNamespace", return_value=mock_ns),
         patch("outbox_sdk.DestinationsNamespace", return_value=mock_ns),
         patch("outbox_sdk.MessagesNamespace", return_value=mock_ns),
+        patch("outbox_sdk.TemplatesNamespace", return_value=mock_ns),
     ):
         client = OutboxClient(api_key="test-key")
         async with client as ctx:

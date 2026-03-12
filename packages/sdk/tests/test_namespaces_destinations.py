@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from outbox.v1 import destination_pb2
 from outbox_sdk._enums import DestinationEventType, DestinationPayloadFormat, DestinationState
-from outbox_sdk._types import Destination, DestinationTestResult
+from outbox_sdk._types import Destination, DestinationTestResult, DestinationTestResultItem, ValidateFilterResult
 from outbox_sdk.namespaces._destinations import DestinationsNamespace, ListDestinationsResult
 
 
@@ -468,3 +468,71 @@ async def test_listen_forwards_max_events_and_wait_seconds(
     first_req = mock_dest_client.poll_events.call_args_list[0][0][0]
     assert first_req.max_events == 5
     assert first_req.wait_seconds == 20
+
+
+@pytest.mark.asyncio
+async def test_validate_filter_valid(ns: DestinationsNamespace, mock_dest_client: AsyncMock) -> None:
+    resp = destination_pb2.ValidateDestinationFilterResponse()
+    resp.valid = True
+    resp.matched_count = 5
+    resp.total_count = 10
+    mock_dest_client.validate_destination_filter = AsyncMock(return_value=resp)
+
+    result = await ns.validate_filter('connector == "connectors/abc"', sample_size=10)
+
+    assert isinstance(result, ValidateFilterResult)
+    assert result.valid is True
+    assert result.matched_count == 5
+    assert result.total_count == 10
+    assert result.error_message == ""
+
+    req = mock_dest_client.validate_destination_filter.call_args[0][0]
+    assert req.filter == 'connector == "connectors/abc"'
+    assert req.sample_size == 10
+
+
+@pytest.mark.asyncio
+async def test_validate_filter_invalid(ns: DestinationsNamespace, mock_dest_client: AsyncMock) -> None:
+    resp = destination_pb2.ValidateDestinationFilterResponse()
+    resp.valid = False
+    resp.error_message = "syntax error near token '=='"
+    mock_dest_client.validate_destination_filter = AsyncMock(return_value=resp)
+
+    result = await ns.validate_filter("connector ==")
+
+    assert result.valid is False
+    assert result.error_message == "syntax error near token '=='"
+
+
+@pytest.mark.asyncio
+async def test_list_test_results_success(ns: DestinationsNamespace, mock_dest_client: AsyncMock) -> None:
+    resp = destination_pb2.ListDestinationTestResultsResponse()
+    item = destination_pb2.DestinationTestResult()
+    item.success = True
+    item.http_status_code = 200
+    item.latency_ms = 42
+    resp.results.append(item)
+    mock_dest_client.list_destination_test_results = AsyncMock(return_value=resp)
+
+    results = await ns.list_test_results("dest-1", page_size=5)
+
+    assert isinstance(results, list)
+    assert len(results) == 1
+    assert isinstance(results[0], DestinationTestResultItem)
+    assert results[0].success is True
+    assert results[0].http_status_code == 200
+    assert results[0].latency_ms == 42
+
+    req = mock_dest_client.list_destination_test_results.call_args[0][0]
+    assert req.name == "destinations/dest-1"
+    assert req.page_size == 5
+
+
+@pytest.mark.asyncio
+async def test_list_test_results_empty(ns: DestinationsNamespace, mock_dest_client: AsyncMock) -> None:
+    resp = destination_pb2.ListDestinationTestResultsResponse()
+    mock_dest_client.list_destination_test_results = AsyncMock(return_value=resp)
+
+    results = await ns.list_test_results("dest-1")
+
+    assert results == []

@@ -1,20 +1,26 @@
 # packages/sdk/src/outbox_sdk/namespaces/_connectors.py
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from google.longrunning.operations_connect import OperationsClient
+from google.longrunning.operations_pb2 import GetOperationRequest
 from google.protobuf.field_mask_pb2 import FieldMask
 from outbox.v1.connector_connect import ConnectorServiceClient
 from outbox.v1.connector_pb2 import (
     ActivateConnectorRequest,
     CreateConnectorRequest,
+    CreateManagedConnectorRequest,
     DeactivateConnectorRequest,
     DeleteConnectorRequest,
+    DetachProvisionedResourceRequest,
     GetConnectorRequest,
     ListConnectorsRequest,
     ReauthorizeConnectorRequest,
     UpdateConnectorRequest,
+    VerifyConnectorRequest,
 )
 from outbox.v1.connector_pb2 import (
     Connector as ProtoConnector,
@@ -22,7 +28,7 @@ from outbox.v1.connector_pb2 import (
 from outbox_sdk._field_mask import derive_field_mask
 from outbox_sdk._mappers import map_connector
 from outbox_sdk._resource_names import connector_name
-from outbox_sdk._types import ChannelConfigType, CreateConnectorResult
+from outbox_sdk._types import ChannelConfigType, CreateConnectorResult, ReauthorizeResult
 
 if TYPE_CHECKING:
     from connectrpc.interceptor import Interceptor
@@ -43,9 +49,13 @@ class ListConnectorsResult:
 class ConnectorsNamespace:
     def __init__(self, base_url: str, interceptors: tuple[Interceptor, ...] = ()) -> None:  # type: ignore[reportUnknownParameterType]
         self._client = ConnectorServiceClient(base_url, interceptors=interceptors)
+        self._ops_client = OperationsClient(base_url, interceptors=interceptors)
+        # _poll_interval controls seconds between LRO polls. Zero skips the sleep (used in tests).
+        self._poll_interval: float = 2.0
 
     async def close(self) -> None:
         await self._client.close()
+        await self._ops_client.close()
 
     async def create(
         self,
@@ -54,6 +64,7 @@ class ConnectorsNamespace:
         channel_config: dict[str, object],
         tags: list[str] | None = None,
         request_id: str = "",
+        consent_acknowledged: bool = False,
     ) -> CreateConnectorResult:
         if channel_config_type not in _VALID_CHANNEL_CONFIG_TYPES:
             msg = f"Invalid channel_config_type: {channel_config_type!r}"
@@ -62,9 +73,14 @@ class ConnectorsNamespace:
         cfg = getattr(connector, channel_config_type)
         for k, v in channel_config.items():
             setattr(cfg, k, v)
+        cfg.SetInParent()  # ensures oneof is set even for zero-field configs
         if tags is not None:
             connector.tags.extend(tags)
-        req = CreateConnectorRequest(connector=connector, request_id=request_id)
+        req = CreateConnectorRequest(
+            connector=connector,
+            request_id=request_id,
+            consent_acknowledged=consent_acknowledged,
+        )
         res = await self._client.create_connector(req)
         if not res.HasField("connector"):
             msg = "create_connector: server returned empty connector"
@@ -110,19 +126,23 @@ class ConnectorsNamespace:
         channel_config_type: ChannelConfigType | None = None,
         channel_config: dict[str, object] | None = None,
         tags: list[str] | None = None,
+        webhook_url: str | None = None,
     ) -> Connector:
-        fields: dict[str, object] = {"tags": tags}
+        fields: dict[str, object] = {"tags": tags, "webhook_url": webhook_url}
         connector = ProtoConnector(name=connector_name(id_))
         if tags is not None:
             connector.tags.extend(tags)
-        if channel_config_type and channel_config:
+        if webhook_url is not None:
+            connector.webhook_url = webhook_url
+        if channel_config_type is not None:
             if channel_config_type not in _VALID_CHANNEL_CONFIG_TYPES:
                 msg = f"Invalid channel_config_type: {channel_config_type!r}"
                 raise ValueError(msg)
             cfg = getattr(connector, channel_config_type)
-            fields[channel_config_type] = channel_config
-            for k, v in channel_config.items():
+            fields[channel_config_type] = channel_config or {}
+            for k, v in (channel_config or {}).items():
                 setattr(cfg, k, v)
+            cfg.SetInParent()  # ensures oneof is set even for zero-field configs
         req = UpdateConnectorRequest(
             connector=connector,
             update_mask=FieldMask(paths=derive_field_mask(fields)),
@@ -153,12 +173,64 @@ class ConnectorsNamespace:
             raise RuntimeError(msg)
         return map_connector(res.connector)
 
-    async def reauthorize(self, id_: str) -> str:
-        """Trigger a new OAuth flow for an existing connector.
-
-        Returns the authorization URL to redirect the user to.
-        Raises an error for static-credential channels.
-        """
+    async def reauthorize(self, id_: str) -> ReauthorizeResult:
+        """Trigger a new OAuth flow for an existing connector."""
         req = ReauthorizeConnectorRequest(name=connector_name(id_))
         res = await self._client.reauthorize_connector(req)
-        return res.authorization_url
+        if not res.HasField("connector"):
+            msg = "reauthorize_connector: server returned empty connector"
+            raise RuntimeError(msg)
+        return ReauthorizeResult(
+            connector=map_connector(res.connector),
+            authorization_url=res.authorization_url or None,
+        )
+
+    async def verify(self, id_: str, code: str, *, password: str = "") -> Connector:
+        """Submit a verification code for a connector (e.g. Telegram/Signal)."""
+        req = VerifyConnectorRequest(name=connector_name(id_), code=code, password=password)
+        res = await self._client.verify_connector(req)
+        if not res.HasField("connector"):
+            msg = "verify_connector: server returned empty connector"
+            raise RuntimeError(msg)
+        return map_connector(res.connector)
+
+    async def detach(self, id_: str) -> Connector:
+        """Detach the provisioned resource from a managed connector."""
+        req = DetachProvisionedResourceRequest(name=connector_name(id_))
+        res = await self._client.detach_provisioned_resource(req)
+        if not res.HasField("connector"):
+            msg = "detach_provisioned_resource: server returned empty connector"
+            raise RuntimeError(msg)
+        return map_connector(res.connector)
+
+    async def create_managed(
+        self,
+        channel: str,
+        *,
+        filters: dict[str, str] | None = None,
+        webhook_url: str = "",
+        tags: list[str] | None = None,
+        request_id: str = "",
+    ) -> Connector:
+        """Provision a managed connector for the given channel (LRO)."""
+        req = CreateManagedConnectorRequest(
+            channel=channel,
+            filters=filters or {},
+            webhook_url=webhook_url,
+            tags=tags or [],
+            request_id=request_id,
+        )
+        op = await self._client.create_managed_connector(req)
+        while not op.done:
+            if self._poll_interval > 0:
+                await asyncio.sleep(self._poll_interval)
+            op = await self._ops_client.get_operation(GetOperationRequest(name=op.name))
+        if op.HasField("error"):
+            err = op.error
+            msg = f"create_managed_connector failed: {err.message} (code {err.code})"
+            raise RuntimeError(msg)
+        connector_proto = ProtoConnector()
+        if not op.response.Unpack(connector_proto):
+            msg = "create_managed_connector: failed to unpack response"
+            raise RuntimeError(msg)
+        return map_connector(connector_proto)

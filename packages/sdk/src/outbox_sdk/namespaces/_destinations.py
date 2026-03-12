@@ -32,7 +32,7 @@ from outbox_sdk._types import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncGenerator, AsyncIterator
 
     from connectrpc.interceptor import Interceptor
     from outbox_sdk._types import DeliveryEvent, Destination
@@ -226,7 +226,7 @@ class DestinationsNamespace:
         resume_cursor: str = "",
         max_events: int = 0,
         wait_seconds: int = 0,
-    ) -> AsyncIterator[DeliveryEvent]:
+    ) -> AsyncGenerator[DeliveryEvent, None]:
         """Listen for events from a local destination using long polling.
 
         Yields DeliveryEvent instances as they arrive. Runs until the

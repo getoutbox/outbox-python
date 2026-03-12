@@ -3,10 +3,10 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+
 if TYPE_CHECKING:
     from google.protobuf.timestamp_pb2 import Timestamp
     from outbox.v1.account_pb2 import Account as ProtoAccount
-    from outbox.v1.channel_pb2 import Channel as ProtoChannel
     from outbox.v1.connector_pb2 import Connector as ProtoConnector
     from outbox.v1.destination_pb2 import DeliveryEvent as ProtoDeliveryEvent
     from outbox.v1.destination_pb2 import Destination as ProtoDestination
@@ -15,9 +15,12 @@ if TYPE_CHECKING:
     from outbox.v1.message_pb2 import MessagePart as ProtoMessagePart
     from outbox.v1.message_pb2 import ReadReceiptEvent as ProtoReadReceiptEvent
     from outbox.v1.message_pb2 import TypingIndicatorEvent as ProtoTypingIndicatorEvent
+    from outbox.v1.template_pb2 import Template as ProtoTemplate
 
 from outbox_sdk._enums import (
     AccountSource,
+    ConnectorKind,
+    ConnectorReadiness,
     ConnectorState,
     DestinationEventType,
     DestinationPayloadFormat,
@@ -26,12 +29,12 @@ from outbox_sdk._enums import (
     MessageDeliveryStatus,
     MessageDirection,
     MessagePartDisposition,
+    TemplateCategory,
+    TemplateStatus,
 )
 from outbox_sdk._resource_names import parse_id
 from outbox_sdk._types import (
     Account,
-    Channel,
-    ChannelCapabilities,
     Connector,
     DeliveryEvent,
     DeliveryUpdateEvent,
@@ -42,6 +45,7 @@ from outbox_sdk._types import (
     MessagePart,
     ReadReceiptDeliveryEvent,
     ReadReceiptEvent,
+    Template,
     TypingIndicatorDeliveryEvent,
     TypingIndicatorEvent,
     UnknownDeliveryEvent,
@@ -55,48 +59,60 @@ def proto_ts(ts: Timestamp) -> datetime | None:
     return datetime.fromtimestamp(ts.seconds + ts.nanos / 1_000_000_000, tz=UTC)
 
 
-def map_channel(p: ProtoChannel) -> Channel:
-    caps: ChannelCapabilities | None = None
-    if p.HasField("capabilities"):
-        c = p.capabilities
-        caps = ChannelCapabilities(
-            groups=c.groups,
-            reactions=c.reactions,
-            edits=c.edits,
-            deletions=c.deletions,
-            read_receipts=c.read_receipts,
-            typing_indicators=c.typing_indicators,
-            supported_content_types=list(c.supported_content_types),
-        )
-    return Channel(
-        id=parse_id(p.name),
-        capabilities=caps,
-        create_time=proto_ts(p.create_time),
-    )
-
-
 def map_connector(p: ProtoConnector) -> Connector:
     which = p.WhichOneof("channel_config")
     config_dict: dict[str, object] | None = None
     if which:
         config_obj = getattr(p, which)
         config_dict = {}
-        for descriptor in config_obj.DESCRIPTOR.fields:
-            val = getattr(config_obj, descriptor.name)
-            if val is not None:
+        # Note: proto3 scalar zero-values ("", 0, False) are never None, so they are
+        # always included in the config dict. This is intentional — callers receive
+        # the full config as the server set it.
+        for field in config_obj.DESCRIPTOR.fields:
+            val = getattr(config_obj, field.name)
+            if field.is_repeated:
+                config_dict[field.name] = list(val)
+            elif val is not None:
                 if hasattr(val, "items"):
                     val = dict(val)
-                elif hasattr(val, "__iter__") and not isinstance(val, (str, bytes)):
-                    val = list(val)
-                config_dict[descriptor.name] = val
+                config_dict[field.name] = val
+    provisioned_resources = [parse_id(r) for r in p.provisioned_resources]
     return Connector(
         id=parse_id(p.name),
-        account=map_account(p.account) if p.HasField("account") else None,
+        kind=ConnectorKind(p.kind),
         state=ConnectorState(p.state),
+        readiness=ConnectorReadiness(p.readiness),
+        provisioned_resources=provisioned_resources,
+        webhook_url=p.webhook_url,
+        display_name=p.display_name,
         tags=list(p.tags),
         channel_config_type=which or None,
         channel_config=config_dict,
         error_message=p.error_message or None,
+        create_time=proto_ts(p.create_time),
+        update_time=proto_ts(p.update_time),
+    )
+
+
+def map_template(p: ProtoTemplate) -> Template:
+    name = p.name
+    parts = name.split("/")
+    if len(parts) < 4 or not parts[1] or not parts[3]:
+        raise ValueError(f"Invalid template resource name: {name!r}")
+    if parts[0] != "connectors" or parts[2] != "templates":
+        raise ValueError(f"Invalid template resource name: {name!r}")
+    connector_id = parts[1]
+    template_id = parts[3]
+    return Template(
+        id=template_id,
+        connector_id=connector_id,
+        template_name=p.template_name,
+        language=p.language,
+        category=TemplateCategory(p.category),
+        components_json=p.components_json,
+        status=TemplateStatus(p.status),
+        rejection_reason=p.rejection_reason,
+        external_id=p.external_id,
         create_time=proto_ts(p.create_time),
         update_time=proto_ts(p.update_time),
     )

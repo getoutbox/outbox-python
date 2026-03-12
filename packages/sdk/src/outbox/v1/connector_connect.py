@@ -12,11 +12,15 @@ from connectrpc.interceptor import Interceptor, InterceptorSync
 from connectrpc.method import IdempotencyLevel, MethodInfo
 from connectrpc.request import Headers, RequestContext
 from connectrpc.server import ConnectASGIApplication, ConnectWSGIApplication, Endpoint, EndpointSync
+import google.longrunning.operations_pb2 as google_dot_longrunning_dot_operations__pb2
 import outbox.v1.connector_pb2 as outbox_dot_v1_dot_connector__pb2
 
 
 class ConnectorService(Protocol):
     async def create_connector(self, request: outbox_dot_v1_dot_connector__pb2.CreateConnectorRequest, ctx: RequestContext) -> outbox_dot_v1_dot_connector__pb2.CreateConnectorResponse:
+        raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
+
+    async def create_managed_connector(self, request: outbox_dot_v1_dot_connector__pb2.CreateManagedConnectorRequest, ctx: RequestContext) -> google_dot_longrunning_dot_operations__pb2.Operation:
         raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
 
     async def get_connector(self, request: outbox_dot_v1_dot_connector__pb2.GetConnectorRequest, ctx: RequestContext) -> outbox_dot_v1_dot_connector__pb2.GetConnectorResponse:
@@ -31,6 +35,9 @@ class ConnectorService(Protocol):
     async def delete_connector(self, request: outbox_dot_v1_dot_connector__pb2.DeleteConnectorRequest, ctx: RequestContext) -> outbox_dot_v1_dot_connector__pb2.DeleteConnectorResponse:
         raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
 
+    async def detach_provisioned_resource(self, request: outbox_dot_v1_dot_connector__pb2.DetachProvisionedResourceRequest, ctx: RequestContext) -> outbox_dot_v1_dot_connector__pb2.DetachProvisionedResourceResponse:
+        raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
+
     async def reauthorize_connector(self, request: outbox_dot_v1_dot_connector__pb2.ReauthorizeConnectorRequest, ctx: RequestContext) -> outbox_dot_v1_dot_connector__pb2.ReauthorizeConnectorResponse:
         raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
 
@@ -38,6 +45,9 @@ class ConnectorService(Protocol):
         raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
 
     async def deactivate_connector(self, request: outbox_dot_v1_dot_connector__pb2.DeactivateConnectorRequest, ctx: RequestContext) -> outbox_dot_v1_dot_connector__pb2.DeactivateConnectorResponse:
+        raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
+
+    async def verify_connector(self, request: outbox_dot_v1_dot_connector__pb2.VerifyConnectorRequest, ctx: RequestContext) -> outbox_dot_v1_dot_connector__pb2.VerifyConnectorResponse:
         raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
 
 
@@ -55,6 +65,16 @@ class ConnectorServiceASGIApplication(ConnectASGIApplication[ConnectorService]):
                         idempotency_level=IdempotencyLevel.UNKNOWN,
                     ),
                     function=svc.create_connector,
+                ),
+                "/outbox.v1.ConnectorService/CreateManagedConnector": Endpoint.unary(
+                    method=MethodInfo(
+                        name="CreateManagedConnector",
+                        service_name="outbox.v1.ConnectorService",
+                        input=outbox_dot_v1_dot_connector__pb2.CreateManagedConnectorRequest,
+                        output=google_dot_longrunning_dot_operations__pb2.Operation,
+                        idempotency_level=IdempotencyLevel.UNKNOWN,
+                    ),
+                    function=svc.create_managed_connector,
                 ),
                 "/outbox.v1.ConnectorService/GetConnector": Endpoint.unary(
                     method=MethodInfo(
@@ -96,6 +116,16 @@ class ConnectorServiceASGIApplication(ConnectASGIApplication[ConnectorService]):
                     ),
                     function=svc.delete_connector,
                 ),
+                "/outbox.v1.ConnectorService/DetachProvisionedResource": Endpoint.unary(
+                    method=MethodInfo(
+                        name="DetachProvisionedResource",
+                        service_name="outbox.v1.ConnectorService",
+                        input=outbox_dot_v1_dot_connector__pb2.DetachProvisionedResourceRequest,
+                        output=outbox_dot_v1_dot_connector__pb2.DetachProvisionedResourceResponse,
+                        idempotency_level=IdempotencyLevel.UNKNOWN,
+                    ),
+                    function=svc.detach_provisioned_resource,
+                ),
                 "/outbox.v1.ConnectorService/ReauthorizeConnector": Endpoint.unary(
                     method=MethodInfo(
                         name="ReauthorizeConnector",
@@ -126,6 +156,16 @@ class ConnectorServiceASGIApplication(ConnectASGIApplication[ConnectorService]):
                     ),
                     function=svc.deactivate_connector,
                 ),
+                "/outbox.v1.ConnectorService/VerifyConnector": Endpoint.unary(
+                    method=MethodInfo(
+                        name="VerifyConnector",
+                        service_name="outbox.v1.ConnectorService",
+                        input=outbox_dot_v1_dot_connector__pb2.VerifyConnectorRequest,
+                        output=outbox_dot_v1_dot_connector__pb2.VerifyConnectorResponse,
+                        idempotency_level=IdempotencyLevel.UNKNOWN,
+                    ),
+                    function=svc.verify_connector,
+                ),
             },
             interceptors=interceptors,
             read_max_bytes=read_max_bytes,
@@ -152,6 +192,26 @@ class ConnectorServiceClient(ConnectClient):
                 service_name="outbox.v1.ConnectorService",
                 input=outbox_dot_v1_dot_connector__pb2.CreateConnectorRequest,
                 output=outbox_dot_v1_dot_connector__pb2.CreateConnectorResponse,
+                idempotency_level=IdempotencyLevel.UNKNOWN,
+            ),
+            headers=headers,
+            timeout_ms=timeout_ms,
+        )
+
+    async def create_managed_connector(
+        self,
+        request: outbox_dot_v1_dot_connector__pb2.CreateManagedConnectorRequest,
+        *,
+        headers: Headers | Mapping[str, str] | None = None,
+        timeout_ms: int | None = None,
+    ) -> google_dot_longrunning_dot_operations__pb2.Operation:
+        return await self.execute_unary(
+            request=request,
+            method=MethodInfo(
+                name="CreateManagedConnector",
+                service_name="outbox.v1.ConnectorService",
+                input=outbox_dot_v1_dot_connector__pb2.CreateManagedConnectorRequest,
+                output=google_dot_longrunning_dot_operations__pb2.Operation,
                 idempotency_level=IdempotencyLevel.UNKNOWN,
             ),
             headers=headers,
@@ -238,6 +298,26 @@ class ConnectorServiceClient(ConnectClient):
             timeout_ms=timeout_ms,
         )
 
+    async def detach_provisioned_resource(
+        self,
+        request: outbox_dot_v1_dot_connector__pb2.DetachProvisionedResourceRequest,
+        *,
+        headers: Headers | Mapping[str, str] | None = None,
+        timeout_ms: int | None = None,
+    ) -> outbox_dot_v1_dot_connector__pb2.DetachProvisionedResourceResponse:
+        return await self.execute_unary(
+            request=request,
+            method=MethodInfo(
+                name="DetachProvisionedResource",
+                service_name="outbox.v1.ConnectorService",
+                input=outbox_dot_v1_dot_connector__pb2.DetachProvisionedResourceRequest,
+                output=outbox_dot_v1_dot_connector__pb2.DetachProvisionedResourceResponse,
+                idempotency_level=IdempotencyLevel.UNKNOWN,
+            ),
+            headers=headers,
+            timeout_ms=timeout_ms,
+        )
+
     async def reauthorize_connector(
         self,
         request: outbox_dot_v1_dot_connector__pb2.ReauthorizeConnectorRequest,
@@ -298,9 +378,31 @@ class ConnectorServiceClient(ConnectClient):
             timeout_ms=timeout_ms,
         )
 
+    async def verify_connector(
+        self,
+        request: outbox_dot_v1_dot_connector__pb2.VerifyConnectorRequest,
+        *,
+        headers: Headers | Mapping[str, str] | None = None,
+        timeout_ms: int | None = None,
+    ) -> outbox_dot_v1_dot_connector__pb2.VerifyConnectorResponse:
+        return await self.execute_unary(
+            request=request,
+            method=MethodInfo(
+                name="VerifyConnector",
+                service_name="outbox.v1.ConnectorService",
+                input=outbox_dot_v1_dot_connector__pb2.VerifyConnectorRequest,
+                output=outbox_dot_v1_dot_connector__pb2.VerifyConnectorResponse,
+                idempotency_level=IdempotencyLevel.UNKNOWN,
+            ),
+            headers=headers,
+            timeout_ms=timeout_ms,
+        )
+
 
 class ConnectorServiceSync(Protocol):
     def create_connector(self, request: outbox_dot_v1_dot_connector__pb2.CreateConnectorRequest, ctx: RequestContext) -> outbox_dot_v1_dot_connector__pb2.CreateConnectorResponse:
+        raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
+    def create_managed_connector(self, request: outbox_dot_v1_dot_connector__pb2.CreateManagedConnectorRequest, ctx: RequestContext) -> google_dot_longrunning_dot_operations__pb2.Operation:
         raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
     def get_connector(self, request: outbox_dot_v1_dot_connector__pb2.GetConnectorRequest, ctx: RequestContext) -> outbox_dot_v1_dot_connector__pb2.GetConnectorResponse:
         raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
@@ -310,11 +412,15 @@ class ConnectorServiceSync(Protocol):
         raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
     def delete_connector(self, request: outbox_dot_v1_dot_connector__pb2.DeleteConnectorRequest, ctx: RequestContext) -> outbox_dot_v1_dot_connector__pb2.DeleteConnectorResponse:
         raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
+    def detach_provisioned_resource(self, request: outbox_dot_v1_dot_connector__pb2.DetachProvisionedResourceRequest, ctx: RequestContext) -> outbox_dot_v1_dot_connector__pb2.DetachProvisionedResourceResponse:
+        raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
     def reauthorize_connector(self, request: outbox_dot_v1_dot_connector__pb2.ReauthorizeConnectorRequest, ctx: RequestContext) -> outbox_dot_v1_dot_connector__pb2.ReauthorizeConnectorResponse:
         raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
     def activate_connector(self, request: outbox_dot_v1_dot_connector__pb2.ActivateConnectorRequest, ctx: RequestContext) -> outbox_dot_v1_dot_connector__pb2.ActivateConnectorResponse:
         raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
     def deactivate_connector(self, request: outbox_dot_v1_dot_connector__pb2.DeactivateConnectorRequest, ctx: RequestContext) -> outbox_dot_v1_dot_connector__pb2.DeactivateConnectorResponse:
+        raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
+    def verify_connector(self, request: outbox_dot_v1_dot_connector__pb2.VerifyConnectorRequest, ctx: RequestContext) -> outbox_dot_v1_dot_connector__pb2.VerifyConnectorResponse:
         raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
 
 
@@ -331,6 +437,16 @@ class ConnectorServiceWSGIApplication(ConnectWSGIApplication):
                         idempotency_level=IdempotencyLevel.UNKNOWN,
                     ),
                     function=service.create_connector,
+                ),
+                "/outbox.v1.ConnectorService/CreateManagedConnector": EndpointSync.unary(
+                    method=MethodInfo(
+                        name="CreateManagedConnector",
+                        service_name="outbox.v1.ConnectorService",
+                        input=outbox_dot_v1_dot_connector__pb2.CreateManagedConnectorRequest,
+                        output=google_dot_longrunning_dot_operations__pb2.Operation,
+                        idempotency_level=IdempotencyLevel.UNKNOWN,
+                    ),
+                    function=service.create_managed_connector,
                 ),
                 "/outbox.v1.ConnectorService/GetConnector": EndpointSync.unary(
                     method=MethodInfo(
@@ -372,6 +488,16 @@ class ConnectorServiceWSGIApplication(ConnectWSGIApplication):
                     ),
                     function=service.delete_connector,
                 ),
+                "/outbox.v1.ConnectorService/DetachProvisionedResource": EndpointSync.unary(
+                    method=MethodInfo(
+                        name="DetachProvisionedResource",
+                        service_name="outbox.v1.ConnectorService",
+                        input=outbox_dot_v1_dot_connector__pb2.DetachProvisionedResourceRequest,
+                        output=outbox_dot_v1_dot_connector__pb2.DetachProvisionedResourceResponse,
+                        idempotency_level=IdempotencyLevel.UNKNOWN,
+                    ),
+                    function=service.detach_provisioned_resource,
+                ),
                 "/outbox.v1.ConnectorService/ReauthorizeConnector": EndpointSync.unary(
                     method=MethodInfo(
                         name="ReauthorizeConnector",
@@ -402,6 +528,16 @@ class ConnectorServiceWSGIApplication(ConnectWSGIApplication):
                     ),
                     function=service.deactivate_connector,
                 ),
+                "/outbox.v1.ConnectorService/VerifyConnector": EndpointSync.unary(
+                    method=MethodInfo(
+                        name="VerifyConnector",
+                        service_name="outbox.v1.ConnectorService",
+                        input=outbox_dot_v1_dot_connector__pb2.VerifyConnectorRequest,
+                        output=outbox_dot_v1_dot_connector__pb2.VerifyConnectorResponse,
+                        idempotency_level=IdempotencyLevel.UNKNOWN,
+                    ),
+                    function=service.verify_connector,
+                ),
             },
             interceptors=interceptors,
             read_max_bytes=read_max_bytes,
@@ -428,6 +564,26 @@ class ConnectorServiceClientSync(ConnectClientSync):
                 service_name="outbox.v1.ConnectorService",
                 input=outbox_dot_v1_dot_connector__pb2.CreateConnectorRequest,
                 output=outbox_dot_v1_dot_connector__pb2.CreateConnectorResponse,
+                idempotency_level=IdempotencyLevel.UNKNOWN,
+            ),
+            headers=headers,
+            timeout_ms=timeout_ms,
+        )
+
+    def create_managed_connector(
+        self,
+        request: outbox_dot_v1_dot_connector__pb2.CreateManagedConnectorRequest,
+        *,
+        headers: Headers | Mapping[str, str] | None = None,
+        timeout_ms: int | None = None,
+    ) -> google_dot_longrunning_dot_operations__pb2.Operation:
+        return self.execute_unary(
+            request=request,
+            method=MethodInfo(
+                name="CreateManagedConnector",
+                service_name="outbox.v1.ConnectorService",
+                input=outbox_dot_v1_dot_connector__pb2.CreateManagedConnectorRequest,
+                output=google_dot_longrunning_dot_operations__pb2.Operation,
                 idempotency_level=IdempotencyLevel.UNKNOWN,
             ),
             headers=headers,
@@ -514,6 +670,26 @@ class ConnectorServiceClientSync(ConnectClientSync):
             timeout_ms=timeout_ms,
         )
 
+    def detach_provisioned_resource(
+        self,
+        request: outbox_dot_v1_dot_connector__pb2.DetachProvisionedResourceRequest,
+        *,
+        headers: Headers | Mapping[str, str] | None = None,
+        timeout_ms: int | None = None,
+    ) -> outbox_dot_v1_dot_connector__pb2.DetachProvisionedResourceResponse:
+        return self.execute_unary(
+            request=request,
+            method=MethodInfo(
+                name="DetachProvisionedResource",
+                service_name="outbox.v1.ConnectorService",
+                input=outbox_dot_v1_dot_connector__pb2.DetachProvisionedResourceRequest,
+                output=outbox_dot_v1_dot_connector__pb2.DetachProvisionedResourceResponse,
+                idempotency_level=IdempotencyLevel.UNKNOWN,
+            ),
+            headers=headers,
+            timeout_ms=timeout_ms,
+        )
+
     def reauthorize_connector(
         self,
         request: outbox_dot_v1_dot_connector__pb2.ReauthorizeConnectorRequest,
@@ -568,6 +744,26 @@ class ConnectorServiceClientSync(ConnectClientSync):
                 service_name="outbox.v1.ConnectorService",
                 input=outbox_dot_v1_dot_connector__pb2.DeactivateConnectorRequest,
                 output=outbox_dot_v1_dot_connector__pb2.DeactivateConnectorResponse,
+                idempotency_level=IdempotencyLevel.UNKNOWN,
+            ),
+            headers=headers,
+            timeout_ms=timeout_ms,
+        )
+
+    def verify_connector(
+        self,
+        request: outbox_dot_v1_dot_connector__pb2.VerifyConnectorRequest,
+        *,
+        headers: Headers | Mapping[str, str] | None = None,
+        timeout_ms: int | None = None,
+    ) -> outbox_dot_v1_dot_connector__pb2.VerifyConnectorResponse:
+        return self.execute_unary(
+            request=request,
+            method=MethodInfo(
+                name="VerifyConnector",
+                service_name="outbox.v1.ConnectorService",
+                input=outbox_dot_v1_dot_connector__pb2.VerifyConnectorRequest,
+                output=outbox_dot_v1_dot_connector__pb2.VerifyConnectorResponse,
                 idempotency_level=IdempotencyLevel.UNKNOWN,
             ),
             headers=headers,
