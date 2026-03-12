@@ -12,11 +12,11 @@ from outbox.v1.template_pb2 import (
     ListTemplatesRequest,
 )
 from outbox.v1.template_pb2 import Template as ProtoTemplate
-from outbox_sdk._enums import TemplateCategory
 from outbox_sdk._mappers import map_template
 
 if TYPE_CHECKING:
     from connectrpc.interceptor import Interceptor
+    from outbox_sdk._enums import TemplateCategory
     from outbox_sdk._types import Template
 
 

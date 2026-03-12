@@ -2,8 +2,7 @@ from datetime import UTC, datetime
 
 import pytest
 from google.protobuf.timestamp_pb2 import Timestamp
-from outbox.v1 import connector_pb2, destination_pb2, message_pb2
-from outbox.v1 import template_pb2
+from outbox.v1 import connector_pb2, destination_pb2, message_pb2, template_pb2
 from outbox_sdk._enums import (
     AccountSource,
     ConnectorKind,

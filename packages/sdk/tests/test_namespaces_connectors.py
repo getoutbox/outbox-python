@@ -475,7 +475,9 @@ async def test_create_managed_error_raises(
 
 
 @pytest.mark.asyncio
-async def test_create_managed_cancelled(ns: ConnectorsNamespace, mock_conn_client: AsyncMock, mock_ops_client: AsyncMock) -> None:
+async def test_create_managed_cancelled(
+    ns: ConnectorsNamespace, mock_conn_client: AsyncMock, mock_ops_client: AsyncMock
+) -> None:
     """Cancellation during polling propagates as CancelledError."""
     import asyncio
 
@@ -534,7 +536,9 @@ async def test_deactivate_empty_response_raises(ns: ConnectorsNamespace, mock_co
 
 
 @pytest.mark.asyncio
-async def test_create_managed_unpack_failure(ns: ConnectorsNamespace, mock_conn_client: AsyncMock, mock_ops_client: AsyncMock) -> None:
+async def test_create_managed_unpack_failure(
+    ns: ConnectorsNamespace, mock_conn_client: AsyncMock, mock_ops_client: AsyncMock
+) -> None:
     """RuntimeError raised when op.response.Unpack returns False."""
     from google.protobuf.any_pb2 import Any as AnyProto
 
@@ -577,7 +581,9 @@ async def test_update_connector_clears_webhook_url(ns: ConnectorsNamespace, mock
 
 
 @pytest.mark.asyncio
-async def test_verify_malformed_connector_name_in_response(ns: ConnectorsNamespace, mock_conn_client: AsyncMock) -> None:
+async def test_verify_malformed_connector_name_in_response(
+    ns: ConnectorsNamespace, mock_conn_client: AsyncMock
+) -> None:
     resp = connector_pb2.VerifyConnectorResponse()
     resp.connector.name = "connectors/"  # malformed — parse_id raises ValueError on empty last segment
     mock_conn_client.verify_connector = AsyncMock(return_value=resp)
@@ -587,7 +593,9 @@ async def test_verify_malformed_connector_name_in_response(ns: ConnectorsNamespa
 
 
 @pytest.mark.asyncio
-async def test_create_managed_forwards_webhook_url_and_tags(ns: ConnectorsNamespace, mock_conn_client: AsyncMock, mock_ops_client: AsyncMock) -> None:
+async def test_create_managed_forwards_webhook_url_and_tags(
+    ns: ConnectorsNamespace, mock_conn_client: AsyncMock, mock_ops_client: AsyncMock
+) -> None:
     from google.protobuf.any_pb2 import Any as AnyProto
     from outbox.v1 import connector_pb2 as conn_pb2
 

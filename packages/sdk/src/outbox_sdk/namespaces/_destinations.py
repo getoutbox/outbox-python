@@ -32,7 +32,7 @@ from outbox_sdk._types import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, AsyncIterator
+    from collections.abc import AsyncGenerator
 
     from connectrpc.interceptor import Interceptor
     from outbox_sdk._types import DeliveryEvent, Destination

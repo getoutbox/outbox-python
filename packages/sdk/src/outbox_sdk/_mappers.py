@@ -3,7 +3,6 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-
 if TYPE_CHECKING:
     from google.protobuf.timestamp_pb2 import Timestamp
     from outbox.v1.account_pb2 import Account as ProtoAccount
@@ -97,10 +96,12 @@ def map_connector(p: ProtoConnector) -> Connector:
 def map_template(p: ProtoTemplate) -> Template:
     name = p.name
     parts = name.split("/")
-    if len(parts) < 4 or not parts[1] or not parts[3]:
-        raise ValueError(f"Invalid template resource name: {name!r}")
+    _expected_parts = 4
+    msg = f"Invalid template resource name: {name!r}"
+    if len(parts) < _expected_parts or not parts[1] or not parts[3]:
+        raise ValueError(msg)
     if parts[0] != "connectors" or parts[2] != "templates":
-        raise ValueError(f"Invalid template resource name: {name!r}")
+        raise ValueError(msg)
     connector_id = parts[1]
     template_id = parts[3]
     return Template(
