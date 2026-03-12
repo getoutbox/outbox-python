@@ -14,9 +14,9 @@ from outbox_sdk.namespaces._connectors import ConnectorsNamespace, ListConnector
 
 def _make_connector(
     name: str = "connectors/conn-1",
-    state: int = connector_pb2.ConnectorState.Value("CONNECTOR_STATE_ACTIVE"),
-    kind: int = connector_pb2.ConnectorKind.Value("CONNECTOR_KIND_USER"),
-    readiness: int = connector_pb2.ConnectorReadiness.Value("CONNECTOR_READINESS_READY"),
+    state: connector_pb2.ConnectorState = connector_pb2.ConnectorState.CONNECTOR_STATE_ACTIVE,
+    kind: connector_pb2.ConnectorKind = connector_pb2.ConnectorKind.CONNECTOR_KIND_USER,
+    readiness: connector_pb2.ConnectorReadiness = connector_pb2.ConnectorReadiness.CONNECTOR_READINESS_READY,
 ) -> connector_pb2.Connector:
     c = connector_pb2.Connector()
     c.name = name
@@ -47,7 +47,7 @@ def ns(mock_conn_client: AsyncMock, mock_ops_client: AsyncMock) -> ConnectorsNam
         MockClient.return_value = mock_conn_client
         MockOpsClient.return_value = mock_ops_client
         instance = ConnectorsNamespace("http://localhost:8080")
-        instance._poll_interval = 0  # skip sleeping in tests
+        instance._poll_interval = 0  # type: ignore[reportPrivateUsage]  # skip sleeping in tests
         return instance
 
 
@@ -75,7 +75,7 @@ async def test_create_success(ns: ConnectorsNamespace, mock_conn_client: AsyncMo
 @pytest.mark.asyncio
 async def test_create_with_authorization_url(ns: ConnectorsNamespace, mock_conn_client: AsyncMock) -> None:
     resp = connector_pb2.CreateConnectorResponse()
-    resp.connector.CopyFrom(_make_connector(state=connector_pb2.ConnectorState.Value("CONNECTOR_STATE_AUTHORIZING")))
+    resp.connector.CopyFrom(_make_connector(state=connector_pb2.ConnectorState.CONNECTOR_STATE_AUTHORIZING))
     resp.authorization_url = "https://oauth.example.com/auth?code=xyz"
     mock_conn_client.create_connector = AsyncMock(return_value=resp)
 
@@ -410,7 +410,7 @@ async def test_create_managed_success(
     connector_proto = _make_connector("connectors/managed-1")
 
     packed = AnyProto()
-    packed.Pack(connector_proto)
+    packed.Pack(connector_proto)  # type: ignore[reportUnknownMemberType]
 
     op_done = Operation()
     op_done.name = "operations/op-1"
@@ -435,7 +435,7 @@ async def test_create_managed_polls_until_done(
 ) -> None:
     connector_proto = _make_connector("connectors/managed-2")
     packed = AnyProto()
-    packed.Pack(connector_proto)
+    packed.Pack(connector_proto)  # type: ignore[reportUnknownMemberType]
 
     op_pending = Operation()
     op_pending.name = "operations/op-2"
@@ -466,7 +466,7 @@ async def test_create_managed_error_raises(
     op_error = Operation()
     op_error.name = "operations/op-err"
     op_error.done = True
-    op_error.error.CopyFrom(Status(code=9, message="quota exceeded"))
+    op_error.error.CopyFrom(Status(code=9, message="quota exceeded"))  # type: ignore[reportArgumentType]
 
     mock_conn_client.create_managed_connector = AsyncMock(return_value=op_error)
 
@@ -546,7 +546,7 @@ async def test_create_managed_unpack_failure(
     op_proto.done = True
     # Set a response that will fail to unpack as Connector
     any_val = AnyProto()
-    any_val.Pack(Operation())  # Wrong type — Unpack to Connector will return False
+    any_val.Pack(Operation())  # type: ignore[reportUnknownMemberType]  # Wrong type — Unpack to Connector will return False
     op_proto.response.CopyFrom(any_val)
     mock_conn_client.create_managed_connector = AsyncMock(return_value=op_proto)
 
@@ -604,7 +604,7 @@ async def test_create_managed_forwards_webhook_url_and_tags(
     connector_proto = conn_pb2.Connector()
     connector_proto.name = "connectors/managed-1"
     any_val = AnyProto()
-    any_val.Pack(connector_proto)
+    any_val.Pack(connector_proto)  # type: ignore[reportUnknownMemberType]
     op_proto.response.CopyFrom(any_val)
     mock_conn_client.create_managed_connector = AsyncMock(return_value=op_proto)
 

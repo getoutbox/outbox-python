@@ -43,9 +43,9 @@ def test_map_connector_basic() -> None:
     proto.name = "connectors/abc"
     proto.whatsapp_bot.app_id = "app123"
     proto.whatsapp_bot.app_secret = "secret456"
-    proto.state = connector_pb2.ConnectorState.Value("CONNECTOR_STATE_ACTIVE")
-    proto.kind = connector_pb2.ConnectorKind.Value("CONNECTOR_KIND_BOT")
-    proto.readiness = connector_pb2.ConnectorReadiness.Value("CONNECTOR_READINESS_READY")
+    proto.state = connector_pb2.ConnectorState.CONNECTOR_STATE_ACTIVE
+    proto.kind = connector_pb2.ConnectorKind.CONNECTOR_KIND_BOT
+    proto.readiness = connector_pb2.ConnectorReadiness.CONNECTOR_READINESS_READY
     proto.display_name = "My WhatsApp Bot"
     proto.webhook_url = "https://example.com/hook"
     proto.create_time.CopyFrom(_ts(1700000000))
@@ -68,7 +68,7 @@ def test_map_connector_basic() -> None:
 def test_map_connector_error_message() -> None:
     proto = connector_pb2.Connector()
     proto.name = "connectors/abc"
-    proto.state = connector_pb2.ConnectorState.Value("CONNECTOR_STATE_ERROR")
+    proto.state = connector_pb2.ConnectorState.CONNECTOR_STATE_ERROR
     proto.error_message = "token expired"
 
     result = map_connector(proto)
@@ -80,7 +80,7 @@ def test_map_connector_error_message() -> None:
 def test_map_connector_no_channel_config() -> None:
     proto = connector_pb2.Connector()
     proto.name = "connectors/xyz"
-    proto.state = connector_pb2.ConnectorState.Value("CONNECTOR_STATE_INACTIVE")
+    proto.state = connector_pb2.ConnectorState.CONNECTOR_STATE_INACTIVE
 
     result = map_connector(proto)
 
@@ -91,7 +91,7 @@ def test_map_connector_no_channel_config() -> None:
 def test_map_connector_provisioned_resources() -> None:
     proto = connector_pb2.Connector()
     proto.name = "connectors/abc"
-    proto.state = connector_pb2.ConnectorState.Value("CONNECTOR_STATE_ACTIVE")
+    proto.state = connector_pb2.ConnectorState.CONNECTOR_STATE_ACTIVE
     proto.provisioned_resources.extend([
         "provisioned_resources/res-1",
         "provisioned_resources/res-2",
@@ -422,7 +422,7 @@ def test_map_connector_with_tags() -> None:
     proto = connector_pb2.Connector()
     proto.name = "connectors/abc"
     proto.tags.extend(["prod", "whatsapp", "critical"])
-    proto.state = connector_pb2.ConnectorState.Value("CONNECTOR_STATE_ACTIVE")
+    proto.state = connector_pb2.ConnectorState.CONNECTOR_STATE_ACTIVE
 
     result = map_connector(proto)
 
@@ -432,7 +432,7 @@ def test_map_connector_with_tags() -> None:
 def test_map_connector_no_tags() -> None:
     proto = connector_pb2.Connector()
     proto.name = "connectors/abc"
-    proto.state = connector_pb2.ConnectorState.Value("CONNECTOR_STATE_ACTIVE")
+    proto.state = connector_pb2.ConnectorState.CONNECTOR_STATE_ACTIVE
 
     result = map_connector(proto)
 
@@ -443,7 +443,7 @@ def test_map_connector_channel_config_includes_all_fields() -> None:
     """channel_config mapper uses `if val is not None:` so all fields including empty strings are included."""
     proto = connector_pb2.Connector()
     proto.name = "connectors/abc"
-    proto.state = connector_pb2.ConnectorState.Value("CONNECTOR_STATE_ACTIVE")
+    proto.state = connector_pb2.ConnectorState.CONNECTOR_STATE_ACTIVE
     proto.whatsapp_bot.app_id = ""  # empty string — now included (is not None)
     proto.whatsapp_bot.app_secret = "secret-123"
 
@@ -715,7 +715,7 @@ def test_map_connector_empty_string_config_preserved() -> None:
 
     proto = connector_pb2.Connector()
     proto.name = "connectors/conn-1"
-    proto.state = connector_pb2.ConnectorState.Value("CONNECTOR_STATE_ACTIVE")
+    proto.state = connector_pb2.ConnectorState.CONNECTOR_STATE_ACTIVE
     # slack_bot.bot_token is an empty string — it must still be included
     proto.slack_bot.bot_token = ""  # empty string, same as proto default
     proto.slack_bot.signing_secret = "sign-abc"
@@ -901,9 +901,9 @@ def test_map_template_basic() -> None:
     proto.name = "connectors/conn-1/templates/tmpl-abc"
     proto.template_name = "order_confirmation"
     proto.language = "en"
-    proto.category = 1  # UTILITY
+    proto.category = template_pb2.Template.Category.CATEGORY_UTILITY
     proto.components_json = '[{"type":"BODY","text":"Hello"}]'
-    proto.status = 2  # APPROVED
+    proto.status = template_pb2.TemplateStatus.TEMPLATE_STATUS_APPROVED
     proto.create_time.CopyFrom(_ts(1700000000))
     proto.update_time.CopyFrom(_ts(1700000001))
 
@@ -925,8 +925,8 @@ def test_map_template_rejection() -> None:
     proto.name = "connectors/conn-1/templates/tmpl-rej"
     proto.template_name = "promo"
     proto.language = "es"
-    proto.category = 2  # MARKETING
-    proto.status = 3  # REJECTED
+    proto.category = template_pb2.Template.Category.CATEGORY_MARKETING
+    proto.status = template_pb2.TemplateStatus.TEMPLATE_STATUS_REJECTED
     proto.rejection_reason = "content policy violation"
     proto.external_id = "ext-12345"
 
@@ -945,7 +945,7 @@ def test_map_template_rejection() -> None:
 def test_map_template_status_paused() -> None:
     tmpl = template_pb2.Template()
     tmpl.name = "connectors/c1/templates/t1"
-    tmpl.status = template_pb2.TemplateStatus.Value("TEMPLATE_STATUS_PAUSED")
+    tmpl.status = template_pb2.TemplateStatus.TEMPLATE_STATUS_PAUSED
     result = map_template(tmpl)
     assert result.status == TemplateStatus.PAUSED
 
@@ -953,7 +953,7 @@ def test_map_template_status_paused() -> None:
 def test_map_template_status_disabled() -> None:
     tmpl = template_pb2.Template()
     tmpl.name = "connectors/c1/templates/t1"
-    tmpl.status = template_pb2.TemplateStatus.Value("TEMPLATE_STATUS_DISABLED")
+    tmpl.status = template_pb2.TemplateStatus.TEMPLATE_STATUS_DISABLED
     result = map_template(tmpl)
     assert result.status == TemplateStatus.DISABLED
 

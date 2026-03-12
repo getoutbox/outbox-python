@@ -5,7 +5,7 @@ import asyncio
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from google.longrunning.operations_connect import OperationsClient
+from google.longrunning.operations_connect import OperationsClient  # type: ignore[reportMissingTypeStubs]
 from google.longrunning.operations_pb2 import GetOperationRequest
 from google.protobuf.field_mask_pb2 import FieldMask
 from outbox.v1.connector_connect import ConnectorServiceClient
@@ -230,7 +230,7 @@ class ConnectorsNamespace:
             msg = f"create_managed_connector failed: {err.message} (code {err.code})"
             raise RuntimeError(msg)
         connector_proto = ProtoConnector()
-        if not op.response.Unpack(connector_proto):
+        if not op.response.Unpack(connector_proto):  # type: ignore[reportUnknownMemberType]
             msg = "create_managed_connector: failed to unpack response"
             raise RuntimeError(msg)
         return map_connector(connector_proto)

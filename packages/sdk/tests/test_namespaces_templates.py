@@ -17,9 +17,9 @@ def _make_template(
     t.name = f"connectors/{connector_id}/templates/{template_id}"
     t.template_name = "order_confirmation"
     t.language = "en"
-    t.category = int(TemplateCategory.UTILITY)
+    t.category = template_pb2.Template.Category.CATEGORY_UTILITY
     t.components_json = '[{"type":"BODY","text":"Hello"}]'
-    t.status = int(TemplateStatus.APPROVED)
+    t.status = template_pb2.TemplateStatus.TEMPLATE_STATUS_APPROVED
     return t
 
 
