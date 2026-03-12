@@ -21,7 +21,6 @@ members = [
     "outbox-examples-sqs",
     "outbox-examples-temporal",
     "outbox-examples-webhook",
-    "outbox-python",
     "outbox-sdk",
 ]
 overrides = [{ name = "protobuf", specifier = ">=7.34.0" }]
@@ -1850,13 +1849,8 @@ requires-dist = [
 dev = [{ name = "poethepoet" }]
 
 [[package]]
-name = "outbox-python"
-version = "0.0.0"
-source = { virtual = "." }
-
-[[package]]
 name = "outbox-sdk"
-version = "0.0.0"
+version = "0.1.0"
 source = { editable = "packages/sdk" }
 dependencies = [
     { name = "aiohttp" },

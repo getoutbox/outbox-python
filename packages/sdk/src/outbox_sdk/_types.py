@@ -7,6 +7,8 @@ from typing import Literal, TypeAlias
 
 from outbox_sdk._enums import (
     AccountSource,
+    ConnectorKind,
+    ConnectorReadiness,
     ConnectorState,
     DestinationEventType,
     DestinationPayloadFormat,
@@ -15,54 +17,66 @@ from outbox_sdk._enums import (
     MessageDeliveryStatus,
     MessageDirection,
     MessagePartDisposition,
+    TemplateCategory,
+    TemplateStatus,
 )
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 _frozen = ConfigDict(frozen=True)
 
 ChannelConfigType: TypeAlias = Literal[
-    "activity_pub",
-    "apns",
+    "activity_pub_bot",
+    "activity_pub_user",
     "apple_messages",
-    "bluesky",
-    "discord",
-    "email",
-    "fcm",
+    "bluesky_bot",
+    "bluesky_user",
+    "discord_bot",
     "freshchat",
-    "google_chat",
+    "google_chat_bot",
+    "google_chat_user",
     "hubspot",
     "in_app",
-    "instagram",
+    "instagram_bot",
     "intercom",
-    "kakao_talk",
-    "lark",
-    "line",
-    "linkedin",
+    "kakao_talk_bot",
+    "lark_bot",
+    "lark_user",
+    "line_bot",
+    "line_oauth",
+    "linkedin_company",
+    "linkedin_user",
     "live_chat",
-    "matrix",
-    "mattermost",
-    "messenger",
-    "mqtt",
-    "rcs",
-    "reddit",
-    "signal",
-    "slack",
-    "sms",
-    "teams",
-    "telegram",
-    "threads",
-    "tiktok",
-    "twitch",
-    "viber",
-    "web_push",
-    "webex",
-    "wechat",
-    "whatsapp",
-    "x",
-    "xmpp",
-    "zalo",
+    "matrix_user",
+    "mattermost_bot",
+    "mattermost_user",
+    "messenger_bot",
+    "outbox_email",
+    "outbox_rcs",
+    "outbox_sms",
+    "outbox_whatsapp",
+    "reddit_bot",
+    "reddit_user",
+    "signal_user",
+    "slack_bot",
+    "slack_oauth",
+    "teams_bot",
+    "telegram_bot",
+    "telegram_user",
+    "tiktok_bot",
+    "tiktok_user",
+    "twitch_bot",
+    "twitch_user",
+    "viber_bot",
+    "webex_bot",
+    "webex_user",
+    "wechat_bot",
+    "whatsapp_bot",
+    "x_bot",
+    "x_user",
+    "xmpp_user",
     "zendesk",
-    "zoom_chat",
+    "zoom_chat_s2s",
+    "zoom_chat_user",
 ]
 
 DestinationTargetType: TypeAlias = Literal[
@@ -86,26 +100,6 @@ DestinationTargetType: TypeAlias = Literal[
 ]
 
 
-class ChannelCapabilities(BaseModel):
-    model_config = _frozen
-
-    deletions: bool = False
-    edits: bool = False
-    groups: bool = False
-    reactions: bool = False
-    read_receipts: bool = False
-    supported_content_types: list[str] = []
-    typing_indicators: bool = False
-
-
-class Channel(BaseModel):
-    model_config = _frozen
-
-    id: str
-    capabilities: ChannelCapabilities | None = None
-    create_time: datetime | None = None
-
-
 class Account(BaseModel):
     model_config = _frozen
 
@@ -122,10 +116,12 @@ class Connector(BaseModel):
     model_config = _frozen
 
     id: str
-    # account is populated after creation completes.
-    # None while state is AUTHORIZING.
-    account: Account | None = None
+    kind: ConnectorKind = ConnectorKind.UNSPECIFIED
     state: ConnectorState
+    readiness: ConnectorReadiness = ConnectorReadiness.UNSPECIFIED
+    provisioned_resources: list[str] = Field(default_factory=list)
+    webhook_url: str = ""
+    display_name: str = ""
     tags: list[str]
     channel_config_type: str | None = None
     channel_config: dict[str, object] | None = None
@@ -143,6 +139,29 @@ class CreateConnectorResult(BaseModel):
     # Redirect the user to this URL to complete setup.
     # None for direct-creation channels.
     authorization_url: str | None = None
+
+
+class ReauthorizeResult(BaseModel):
+    model_config = _frozen
+
+    connector: Connector
+    authorization_url: str | None = None
+
+
+class Template(BaseModel):
+    model_config = _frozen
+
+    id: str
+    connector_id: str
+    template_name: str
+    language: str
+    category: TemplateCategory
+    components_json: str
+    status: TemplateStatus
+    rejection_reason: str = ""
+    external_id: str = ""
+    create_time: datetime | None = None
+    update_time: datetime | None = None
 
 
 class MessagePart(BaseModel):

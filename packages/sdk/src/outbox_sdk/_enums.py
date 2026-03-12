@@ -11,6 +11,56 @@ class ConnectorState(IntEnum):
     ERROR = 4
 
 
+class ConnectorKind(IntEnum):
+    UNSPECIFIED = 0
+    MANAGED = 1
+    USER = 2
+    BOT = 3
+
+
+class ConnectorReadiness(IntEnum):
+    UNSPECIFIED = 0
+    READY = 1
+    PENDING_COMPLIANCE = 2
+    RESOURCE_NOT_ACTIVE = 3
+    RESOURCE_SUSPENDED = 4
+
+
+class ProvisionedResourceState(IntEnum):
+    """State of a provisioned resource on a connector.
+
+    Exported for API schema completeness. Individual resource states are not
+    currently surfaced by any SDK method return type.
+    """
+
+    UNSPECIFIED = 0
+    PENDING = 1
+    PROVISIONING = 2
+    ACTIVE = 3
+    SUSPENDED = 4
+    RELEASED = 5
+    FAILED = 6
+    CANCELLING = 7
+    PORTING = 8
+    PORT_FAILED = 9
+
+
+class TemplateStatus(IntEnum):
+    UNSPECIFIED = 0
+    PENDING = 1
+    APPROVED = 2
+    REJECTED = 3
+    PAUSED = 4
+    DISABLED = 5
+
+
+class TemplateCategory(IntEnum):
+    UNSPECIFIED = 0
+    UTILITY = 1
+    MARKETING = 2
+    AUTHENTICATION = 3
+
+
 class AccountSource(IntEnum):
     UNSPECIFIED = 0
     API = 1

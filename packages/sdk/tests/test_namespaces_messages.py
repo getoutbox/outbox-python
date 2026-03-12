@@ -401,3 +401,28 @@ async def test_send_minimal_params_sets_no_optional_fields(
     assert req.message.reply_to == ""
     assert req.message.group_id == ""
     assert len(req.message.metadata) == 0
+
+
+@pytest.mark.asyncio
+async def test_update_field_mask_with_parts(ns: MessagesNamespace, mock_msg_client: AsyncMock) -> None:
+    resp = message_pb2.UpdateMessageResponse()
+    resp.message.CopyFrom(_make_message())
+    mock_msg_client.update_message = AsyncMock(return_value=resp)
+
+    await ns.update(id_="msg-1", parts=[MessagePart.text("Updated")])
+
+    req = mock_msg_client.update_message.call_args[0][0]
+    assert "parts" in list(req.update_mask.paths)
+
+
+@pytest.mark.asyncio
+async def test_update_field_mask_without_parts(ns: MessagesNamespace, mock_msg_client: AsyncMock) -> None:
+    resp = message_pb2.UpdateMessageResponse()
+    resp.message.CopyFrom(_make_message())
+    mock_msg_client.update_message = AsyncMock(return_value=resp)
+
+    await ns.update(id_="msg-1", metadata={"key": "val"})
+
+    req = mock_msg_client.update_message.call_args[0][0]
+    assert "parts" not in list(req.update_mask.paths)
+    assert "metadata" in list(req.update_mask.paths)

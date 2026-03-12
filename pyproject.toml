@@ -68,6 +68,7 @@ ignore = [
     "TRY003",  # long exception messages are fine in tests
     "PT011",   # broad pytest.raises is acceptable in tests
     "B017",    # catching broad exceptions is acceptable in tests
+    "SLF001",  # accessing private members of the class under test is expected
 ]
 
 [tool.ruff.lint.flake8-type-checking]

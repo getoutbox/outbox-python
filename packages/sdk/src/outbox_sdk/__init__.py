@@ -10,6 +10,8 @@ from outbox_sdk._delivery import (
 )
 from outbox_sdk._enums import (
     AccountSource,
+    ConnectorKind,
+    ConnectorReadiness,
     ConnectorState,
     DestinationEventType,
     DestinationPayloadFormat,
@@ -18,12 +20,13 @@ from outbox_sdk._enums import (
     MessageDeliveryStatus,
     MessageDirection,
     MessagePartDisposition,
+    ProvisionedResourceState,
+    TemplateCategory,
+    TemplateStatus,
 )
 from outbox_sdk._resource_names import parse_id
 from outbox_sdk._types import (
     Account,
-    Channel,
-    ChannelCapabilities,
     ChannelConfigType,
     Connector,
     CreateConnectorResult,
@@ -39,13 +42,14 @@ from outbox_sdk._types import (
     MessagePart,
     ReadReceiptDeliveryEvent,
     ReadReceiptEvent,
+    ReauthorizeResult,
+    Template,
     TypingIndicatorDeliveryEvent,
     TypingIndicatorEvent,
     UnknownDeliveryEvent,
     ValidateFilterResult,
 )
 from outbox_sdk.namespaces._accounts import AccountsNamespace, ListAccountsResult
-from outbox_sdk.namespaces._channels import ChannelsNamespace, ListChannelsResult
 from outbox_sdk.namespaces._connectors import ConnectorsNamespace, ListConnectorsResult
 from outbox_sdk.namespaces._destinations import DestinationsNamespace, ListDestinationsResult
 from outbox_sdk.namespaces._messages import (
@@ -53,6 +57,7 @@ from outbox_sdk.namespaces._messages import (
     MessagesNamespace,
     SendMessageResult,
 )
+from outbox_sdk.namespaces._templates import ListTemplatesResult, TemplatesNamespace
 
 if TYPE_CHECKING:
     from connectrpc.request import RequestContext
@@ -61,11 +66,10 @@ __all__ = [
     "Account",
     "AccountSource",
     "AccountsNamespace",
-    "Channel",
-    "ChannelCapabilities",
     "ChannelConfigType",
-    "ChannelsNamespace",
     "Connector",
+    "ConnectorKind",
+    "ConnectorReadiness",
     "ConnectorState",
     "ConnectorsNamespace",
     "CreateConnectorResult",
@@ -80,10 +84,10 @@ __all__ = [
     "DestinationTestResultItem",
     "DestinationsNamespace",
     "ListAccountsResult",
-    "ListChannelsResult",
     "ListConnectorsResult",
     "ListDestinationsResult",
     "ListMessagesResult",
+    "ListTemplatesResult",
     "Message",
     "MessageDeletionScope",
     "MessageDelivery",
@@ -94,9 +98,15 @@ __all__ = [
     "MessagePartDisposition",
     "MessagesNamespace",
     "OutboxClient",
+    "ProvisionedResourceState",
     "ReadReceiptDeliveryEvent",
     "ReadReceiptEvent",
+    "ReauthorizeResult",
     "SendMessageResult",
+    "Template",
+    "TemplateCategory",
+    "TemplateStatus",
+    "TemplatesNamespace",
     "TypingIndicatorDeliveryEvent",
     "TypingIndicatorEvent",
     "UnknownDeliveryEvent",
@@ -134,10 +144,10 @@ class OutboxClient:
         _auth = _BearerAuth(api_key)
         _interceptors = (_auth,)
         self.accounts = AccountsNamespace(base_url, interceptors=_interceptors)
-        self.channels = ChannelsNamespace(base_url, interceptors=_interceptors)
         self.connectors = ConnectorsNamespace(base_url, interceptors=_interceptors)
         self.destinations = DestinationsNamespace(base_url, interceptors=_interceptors)
         self.messages = MessagesNamespace(base_url, interceptors=_interceptors)
+        self.templates = TemplatesNamespace(base_url, interceptors=_interceptors)
 
     async def __aenter__(self) -> Self:
         """Enter async context manager."""
@@ -146,7 +156,7 @@ class OutboxClient:
     async def __aexit__(self, *_: object) -> None:
         """Exit async context manager and close all RPC clients."""
         await self.accounts.close()
-        await self.channels.close()
         await self.connectors.close()
         await self.destinations.close()
         await self.messages.close()
+        await self.templates.close()
